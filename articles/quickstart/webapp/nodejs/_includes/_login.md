@@ -50,7 +50,7 @@ app.use(passport.session());
 
 Auth0's hosted login page can be used to allow users to log in.
 
-Add a route called `/login` and pass an `env` object with the **Client ID**, **Domain**, and **Callback URL** for your client to it.
+Add a route called `/login` and use the `env` object to set the **Client ID**, **Domain**, and **Callback URL** for your client. This route will instantiate `auth0.WebAuth` and call its `authorize` method to redirect the user to Auth0's hosted login page.
 
 ```js
 // routes/index.js
@@ -61,9 +61,15 @@ const env = {
   AUTH0_CALLBACK_URL: 'http://localhost:3000/callback'
 };
 
-// Render the login template
-router.get('/login', (req, res) => {
-  res.render('login', { env });
+// Perform the login
+router.get('/login', passport.authenticate('auth0', {
+  clientID: env.AUTH0_CLIENT_ID,
+  domain: env.AUTH0_DOMAIN,
+  redirectUri: env.AUTH0_CALLBACK_URL,
+  responseType: 'code',
+  scope: 'openid profile'}),
+  function(req, res) {
+    res.redirect("/");
 });
 
 // Perform session logout and redirect to homepage
@@ -74,31 +80,12 @@ router.get('/logout', (req, res) => {
 
 // Perform the final stage of authentication and redirect to '/user'
 router.get('/callback',
-  passport.authenticate('auth0', { failureRedirect: '/url-if-something-fails' }), (req, res) => {
+  passport.authenticate('auth0', {
+    failureRedirect: '/',
+  }),
+  function(req, res) {
     res.redirect(req.session.returnTo || '/user');
   });
-```
-
-Create a view for the `/login` route. The view should instantiate `auth0.WebAuth` and call its `authorize` method to redirect the user to Auth0's hosted login page.
-
-```pug
-// views/login.pug
-
-extends layout
-
-block content
-
-  div(id="root" style="width: 280px; margin: 40px auto; padding: 10px;")
-
-  script.
-    const webAuth = new auth0.WebAuth({
-      clientID: '#{env.AUTH0_CLIENT_ID}',
-      domain: '#{env.AUTH0_DOMAIN}',
-      redirectUri: '#{env.AUTH0_CALLBACK_URL}',
-      responseType: 'code',
-      scope: 'openid'
-    });
-    webAuth.authorize();
 ```
 
 ![hosted login](/media/articles/web/hosted-login.png)
